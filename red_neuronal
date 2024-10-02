@@ -1,0 +1,536 @@
+import os
+import pandas as pd
+import numpy as np
+import re
+
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+'''
+FASE 1: TRATAMIENTO DE DATOS
+'''
+
+def csv_to_excel (directorio_origen, directorio_destino, substring, extension = ".CSV"):
+    
+    '''  **genera un archivo excel a partir de un archivo csv**
+    la función tiene como atributos: directorio de origen y de destino,
+    la cadena de caracteres que se ha de buscar (ya que no se quiere transformar todos los datos dados inicialmente)
+    extensión de origen que se quiere cambiar
+    '''
+    if not os.path.exists(directorio_destino):
+        os.makedirs(directorio_destino)
+        
+    for root, _, archivos in os.walk(directorio_origen):
+        
+        #recorre el directorio de origen y analiza los archivos con el 
+        #nombre y extensión pedidos para pasar solo esos de de csv a excel
+        
+        for archivo in archivos:
+            if archivo.endswith(extension) and substring in archivo:
+                csv_ruta = os.path.join(root, archivo)
+                nombre_archivo = os.path.splitext(archivo)[0]
+                
+                excel_ruta = os.path.join(directorio_destino, nombre_archivo + ".xlsx")
+                datos = pd.read_csv(csv_ruta, delimiter = ',')
+                
+                datos.to_excel(excel_ruta, index = False) #genera el excel en la ruta elegida
+                
+
+def get_poa_front (excel_datos, columna_fe, columna_fw):
+    
+    #recoge los datos del excel de las dos columnas requeridas (para POA frOnt) 
+    #POA FRONT: (FE+FW)/2
+    
+    fe = excel_datos.iloc[:,columna_fe[0]]
+    fw = excel_datos.iloc[:,columna_fw[0]]
+    
+    poa_front = (fe+fw)/2   
+    
+    return poa_front
+
+def get_poa_back (excel_datos, columna_be, columna_bw):
+    
+    #recoge los datos del excel de las dos columnas requeridas (para POA back) 
+    #POA BACK: (BE+BW)/2   
+    
+    be = excel_datos.iloc[:,columna_be[0]]
+    bw = excel_datos.iloc[:,columna_bw[0]]
+    
+    poa_back = (be+bw)/2    
+    
+    return poa_back
+
+def split_data (matriz, nombre_archivo):
+    
+    '''
+    separa los datos entre la parte de entrenamiento y 
+    la parte de testeo y genera dos variables global por 
+    cada matriz previa
+    '''
+    filas_entrenamiento = []
+    filas_pruebas = []
+    umbral = 10
+    
+    numero_filas = len(matriz)
+    num_filas_entrenamiento = int(numero_filas * 0.8) 
+    #se escoge el 80% de las filas para el entrenamiento y el resto para las pruebas
+    
+    if numero_filas < umbral:
+        filas_entrenamiento = matriz[:num_filas_entrenamiento] 
+        filas_pruebas = matriz[num_filas_entrenamiento:]     
+   
+    else:
+        indice = np.arange(numero_filas)
+        np.random.shuffle(indice)
+        
+        indices_filas_entrenamiento = indice[:num_filas_entrenamiento] 
+        indices_filas_pruebas = indice[num_filas_entrenamiento:] 
+        #escoge aleatoriamente las filas para el entrenamiento
+    
+        for i in indices_filas_entrenamiento:
+            filas_entrenamiento.append(matriz[i])
+        
+        for i in indices_filas_pruebas:
+            filas_pruebas.append(matriz[i])
+        #las filas no escogidas para el entrenamiento se almacenan en filas_test
+         
+    globals()[nombre_archivo + "-training"] = filas_entrenamiento
+    globals()[nombre_archivo + "-testing"] = filas_pruebas
+    
+    
+def edit_data (nombre_archivo):
+   
+    '''
+    transforma los datos a datos tipo 
+    numpy para que puedan ser procesados
+    '''
+    
+    input_entrenamiento = []
+    output_entrenamiento = []
+    input_pruebas = []
+    output_pruebas = []
+    
+    datos_entrenamiento = globals().get(nombre_archivo + "-training")
+    datos_pruebas = globals().get(nombre_archivo + "-testing")
+
+    #por cada matriz generada anteriormente de entrenamiento y prueba, 
+    #se separa el input y el output 
+    
+    for columna in datos_entrenamiento:
+        if len(columna)>1:
+            input_entrenamiento.append(columna[1:])
+            output_entrenamiento.append(columna[0])
+        else:
+            print(f"esa columna no es mayor que 1: {columna}")
+            
+    for columna in datos_pruebas:
+        if len(columna)>1:
+            input_pruebas.append(columna[1:])
+            output_pruebas.append(columna[0])
+        else:
+            print(f"esa columna no es mayor que 1: {columna}") 
+     
+    input_entrenamiento = np.array(input_entrenamiento)
+    output_entrenamiento = np.array(output_entrenamiento)
+    input_pruebas = np.array(input_pruebas)
+    output_pruebas = np.array(output_pruebas)
+      
+    return input_entrenamiento, output_entrenamiento, input_pruebas, output_pruebas
+
+def read_excel (directorio_destino, columnas,
+                columna_fe, columna_fw, columna_be,
+                columna_bw):
+    
+    '''
+    lee cada excel del directorio y crea una variable (array de arrays) 
+    con n arrays de las n filas de cada excel  
+    filtra y añade las columnas requeridas y añade después las de POA front y back.
+    LLama además a la función que modifica las variables para que sean numpy y se puedan trabajar con ellas
+    '''
+    global_input_entrenamiento = []
+    global_output_entrenamiento = []
+    global_input_pruebas = []
+    global_output_pruebas = []
+    
+    for archivo in os.listdir(directorio_destino):
+        excel_ruta = os.path.join(directorio_destino, archivo)
+        excel_datos = pd.read_excel(excel_ruta)
+        
+        columnas_seleccionadas = excel_datos.iloc[:,columnas]
+        #columnas_seleccionadas = excel_datos[columnas]
+        
+        matriz = columnas_seleccionadas.values.tolist()
+        
+        poa_front = get_poa_front(excel_datos, columna_fe, columna_fw  )
+        poa_back = get_poa_back(excel_datos, columna_be, columna_bw)
+        
+        for i, fila in enumerate(matriz):
+                fila.append(poa_front.iloc[i])
+                fila.append(poa_back.iloc[i])
+        
+        nombre_archivo = os.path.splitext(archivo)[0].split('-')[0]
+        globals()[nombre_archivo] = matriz
+        
+        #se separan las "matrices" previas en entrenamiento y testeo
+        split_data (matriz, nombre_archivo)
+        
+        input_entrenamiento, output_entrenamiento, input_pruebas, output_pruebas = edit_data(nombre_archivo)
+        
+        global_input_entrenamiento.append(input_entrenamiento)
+        global_output_entrenamiento.append(output_entrenamiento)
+        global_input_pruebas.append(input_pruebas)
+        global_output_pruebas.append(output_pruebas)
+        
+    global_input_entrenamiento = np.vstack(global_input_entrenamiento)
+    global_output_entrenamiento = np.hstack(global_output_entrenamiento)
+    global_input_pruebas = np.vstack(global_input_pruebas)
+    global_output_pruebas = np.hstack(global_output_pruebas)
+        
+    return global_input_entrenamiento, global_output_entrenamiento, global_input_pruebas, global_output_pruebas
+'''
+FIN TRATAMIENTO DE DATOS
+'''
+
+'''
+FASE DOS: CREACIÓN Y ENTRENAMIENTO DE LA RED
+'''
+def menu_red_neuronal ():
+    
+    #despliega el menú de las opciones posibles
+    
+    print("OP 1: ninguna capa intermedia ")
+    print("OP 2: 1 capa de 4 neuronas con activación RELU ")
+    print("OP 3: 1 capa de 4 neuronas con activación SIGMOID ")
+    print("OP 4: 1 capa de 4 neuronas con activación TANH ")
+    print("OP 5: 1 capa de 8 neuronas con activación RELU ")
+    print("OP 6: 1 capa de 8 neuronas con activación SIGMOID ")
+    print("OP 7: 1 capa de 8 neuronas con activación TANH ")
+    print("OP 8: 1 capa de 16 neuronas con activación RELU ")
+    print("OP 9: 1 capa de 16 neuronas con activación SIGMOID ")
+    print("OP 10: 1 capa de 16 neuronas con activación TANH ")
+    print("OP 11: 1 capa de 32 neuronas con activación RELU ")
+    print("OP 12: 1 capa de 32 neuronas con activación SIGMOID ")
+    print("OP 13: 1 capa de 32 neuronas con activación TANH ")
+    print("OP 14: 2 capas de 4 neuronas con activación RELU cada una")
+    print("OP 15: 2 capas de 8 neuronas con activación RELU cada una")
+    print("OP 16: 2 capas de 16 neuronas con activación RELU cada una")
+    print("OP 17: 2 capas de 32 neuronas con activación RELU cada una")
+    print("OP 0: EXIT ")
+
+def plot_red_neuronal (historial, titulo):
+    
+    #grafica los resultados de la red: añade leyenda, titulo, los dos tipos de pérdida
+    
+    plt.xlabel("iteración")
+    plt.ylabel("perdida con respecto a lo esperado")
+    plt.plot(historial.history["loss"], label = "Pérdida de entrenamiento")
+    plt.plot(historial.history["val_loss"], label = "Pérdida de testeo")
+    plt.title(titulo)
+    plt.legend()
+    plt.grid(True)
+    plt.show()    
+    
+def create_model (inputs):
+    
+    #Crea un modelo de red neuronal
+    
+    modelo = tf.keras.Sequential()
+    entrada = tf.keras.layers.Input(shape=(inputs,))
+    modelo.add(entrada)
+
+    opcion=-1
+    while(opcion!=0):
+        menu_red_neuronal()
+        opcion=int(input("introduzca una de las opciones: "))
+        
+        if(opcion>0 and opcion <18 ):
+            if(opcion == 1):
+                titulo = "ningún tipo de capa intermedia"
+                
+            elif(opcion == 2):
+                titulo = "1 Capa de 4 Neuronas con RELU"
+                oculta1 = tf.keras.layers.Dense(4, activation='relu')
+                modelo.add (oculta1)
+                
+            elif(opcion == 3):
+                titulo = "1 Capa de 4 Neuronas con SIGMOID"
+                oculta1 = tf.keras.layers.Dense(4, activation='sigmoid')
+                modelo.add (oculta1)  
+                
+            elif(opcion == 4):
+                titulo = "1 Capa de 4 Neuronas con TANH"
+                oculta1 = tf.keras.layers.Dense(4, activation='tanh')
+                modelo.add (oculta1) 
+                
+            elif(opcion == 5):
+                titulo = "1 Capa de 8 Neuronas con RELU"
+                oculta1 = tf.keras.layers.Dense(8, activation='relu')
+                modelo.add (oculta1)
+                
+            elif(opcion == 6):
+                titulo = "1 Capa de 8 Neuronas con SIGMOID"
+                oculta1 = tf.keras.layers.Dense(8, activation='sigmoid')
+                modelo.add (oculta1)
+            
+            elif(opcion == 7):
+                titulo = "1 Capa de 8 Neuronas con TANH"
+                oculta1 = tf.keras.layers.Dense(8, activation='tanh')
+                modelo.add (oculta1)
+                
+            elif(opcion == 8):
+                titulo = "1 Capa de 8 Neuronas con RELU"
+                oculta1 = tf.keras.layers.Dense(16, activation='relu')
+                modelo.add (oculta1)
+                
+            elif(opcion == 9):
+                titulo = "1 Capa de 16 Neuronas con SIGMOID"
+                oculta1 = tf.keras.layers.Dense(16, activation='sigmoid')
+                modelo.add (oculta1)
+            
+            elif(opcion == 10):
+                titulo = "1 Capa de 16 Neuronas con TANH"
+                oculta1 = tf.keras.layers.Dense(16, activation='tanh')
+                modelo.add (oculta1)
+                
+            elif(opcion == 11):
+                titulo = "1 Capa de 32 Neuronas con RELU"
+                oculta1 = tf.keras.layers.Dense(32, activation='relu')
+                modelo.add (oculta1)
+                
+            elif(opcion == 12):
+                titulo = "1 Capa de 32 Neuronas con SIGMOID"
+                oculta1 = tf.keras.layers.Dense(32, activation='sigmoid')
+                modelo.add (oculta1)
+            
+            elif(opcion == 13):
+                titulo = "1 Capa de 32 Neuronas con TANH"
+                oculta1 = tf.keras.layers.Dense(32, activation='tanh')
+                modelo.add (oculta1)  
+                
+            elif(opcion == 14):    
+                titulo = "2 Capas de 4 Neuronas con RELU cada una"
+                oculta1 = tf.keras.layers.Dense(4, activation='relu')
+                oculta2 = tf.keras.layers.Dense(4, activation='relu')
+                modelo.add (oculta1)
+                modelo.add (oculta2)
+            
+            elif(opcion == 15):    
+                titulo = "2 Capas de 8 Neuronas con RELU cada una"
+                oculta1 = tf.keras.layers.Dense(8, activation='relu')
+                oculta2 = tf.keras.layers.Dense(8, activation='relu')
+                modelo.add (oculta1)
+                modelo.add (oculta2)
+                
+            elif(opcion == 16):    
+                titulo = "2 Capas de 16 Neuronas con RELU cada una"
+                oculta1 = tf.keras.layers.Dense(16, activation='relu')
+                oculta2 = tf.keras.layers.Dense(16, activation='relu')
+                modelo.add (oculta1)
+                modelo.add (oculta2)
+            
+            elif(opcion == 17):    
+                titulo = "2 Capas de 32 Neuronas con RELU cada una"
+                oculta1 = tf.keras.layers.Dense(32, activation='relu')
+                oculta2 = tf.keras.layers.Dense(32, activation='relu')
+                modelo.add (oculta1)
+                modelo.add (oculta2)
+                
+            opcion = 0
+            
+        elif(opcion == 0):
+            print("Fin del bucle")
+            
+        else:
+            print("Te has equivocado de opción :)")
+            
+    salida = tf.keras.layers.Dense(1, activation='linear' )
+    modelo.add (salida)
+    
+    modelo.compile(
+        optimizer = tf.keras.optimizers.Adam(0.001),
+        loss ='mean_squared_error'
+        )    
+
+    return modelo, titulo
+    
+def training (in_entrenamiento, out_entrenamiento, in_pruebas, out_pruebas): 
+    
+    '''
+    se crea el modelo de red neuronal que se va desarrollar (Secuencial)
+    y el tipo de relaciones entre capas de neuronas (densa - para que cada neurona
+    se relacione con todas las neuronas de la siguiente capa)
+    '''
+    num_input = in_entrenamiento.shape[1]
+    modelo, titulo = create_model(num_input)
+    
+    print("\n Comenzando el entrenamiento...")
+    
+    historial = modelo.fit(in_entrenamiento, out_entrenamiento,
+                          validation_data=(in_pruebas, out_pruebas),
+                          epochs=11, 
+                          batch_size = 32, 
+                          verbose= True)
+
+    print("... Entrenado!!")
+    
+    plot_red_neuronal(historial, titulo)
+
+    return modelo, titulo
+'''
+FIN ENTRENAMIENTO RED
+'''
+'''
+FASE 3: COMPROBACIÓN DE RESULTADOS DE LA RED
+'''
+def testing(inputs, outputs, modelo, nombre, directorio, nombre_columna, nombre_output):
+    
+    '''
+    genera un excel con los inputs,outputs, el error cuadratico
+    y la prediccion. Se guarda en un directorio designado
+    '''
+    
+    print("Comprobación!! Revisa el directorio para revisar los resultados")
+    
+    nombre_simplificado = '_'.join(re.findall(r'[A-Z0-9]+', nombre))
+    nombre_excel = f"{nombre_simplificado}.xlsx"
+
+    
+    prediccion = modelo_entrenado.predict(inputs).flatten()
+    e_cuadratico = np.square(prediccion - outputs)
+
+    #se modifican los inputs, outputs, predicciones y errores a dataframe para pasarlos despues al excel
+    df_inputs = pd.DataFrame(inputs, columns= nombre_columna)
+    df_outputs = pd.DataFrame(outputs, columns = nombre_output)
+    df_prediccion = pd.DataFrame(prediccion, columns = ['Prediccion'])
+    df_e_cuadratico = pd.DataFrame(e_cuadratico, columns = ['Errores cuadraticos'])
+    
+    datos_excels = pd.concat([
+        df_inputs, df_outputs, df_prediccion, 
+        df_e_cuadratico], axis=1)
+    
+    if not os.path.exists(directorio):
+        os.makedirs(directorio)  
+        
+    ruta = os.path.join(directorio, nombre_excel)
+    
+    n=1
+    while os.path.exists(ruta):
+        #se verifica que exista ya el archivo
+        nombre_excel = f"{nombre}_v{n}.xlsx"
+        ruta = os.path.join(directorio, nombre_excel)
+        n += 1
+
+    datos_excels.to_excel(ruta, index = False)
+    
+'''
+FIN RESULTADOS RED
+'''
+#variables y llamadas a funciones 
+directorio_origen = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_originales"
+directorio_destino = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_convertidos"
+directorio_datos_generados = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_generados"
+substring = "training_data"
+
+columnas = [5, 6, 7, 45, 46, 47, 48, 53, 56]
+nombre_output = ['Angulo óptimo']
+nombre_columna = ['Ángulo del modulo', 'GHI', 'efemerides BE',
+                  'efemerides FE', 'efemerides BW', 
+                  'efemerides FW', 'DHI/GHI',
+                  'indice de claridad', 'POA_front', 'POA_back']
+
+columna_fe = [26]
+columna_fw = [28]
+columna_be = [25]
+columna_bw = [27]
+
+
+#crea el directorio de destino para almacenar los excels y no genera error si ya existía de antes el directorio
+os.makedirs(directorio_destino, exist_ok = True)
+#crea el excel a partir del csv
+csv_to_excel(directorio_origen, directorio_destino, substring)
+#lee el excel y lo filtra en función de lo pedido, y genera los inputs y outputs que van a ser generados
+input_entrenamiento, output_entrenamiento, input_prueba, output_prueba = read_excel (directorio_destino, columnas,columna_fe,columna_fw, columna_be, columna_bw)
+
+#se crea la red y se entrena
+modelo_entrenado, nombre_opcion = training(input_entrenamiento, output_entrenamiento, input_prueba, output_prueba) 
+
+#se prueba el funcionamiento de la red 
+testing(input_prueba, output_prueba, modelo_entrenado, nombre_opcion, directorio_datos_generados, nombre_columna, nombre_output)
+
+""" LEYENDA MATRIZ
+0 optimal angle
+1 tilt
+2 GHI
+3 ephemeris BE
+4 ephemeris FE
+5 ephemeris BW
+6 ephemeris FW
+7 DHI/GHI
+8 clearness index
+9 poa_front
+10 poa_back
+"""
+
+
+""" leyenda EXCEL
+0 5 6 7 45 46 47 48 53 56
+25 26 27 28
+0    DateTime
+1    optimal power
+2    optimal power non bifacial
+3    ephemeris power
+4    ephemeris power non bifacial
+5    optimal angle
+6    tilt
+7    GHI
+8    dGHI
+9    BE-exterior
+10    BE-mid-exterior
+11    BE-mid-interior
+12    BE-interior
+13    FE-exterior
+14    FE-mid-exterior
+15    FE-mid-interior
+16    FE-interior
+17    BW-exterior
+18    BW-mid-exterior
+19    BW-mid-interior
+20    BW-interior
+21    FW-exterior
+22    FW-mid-exterior
+23    FW-mid-interior
+24    FW-interior
+25    BE
+26    FE
+27    BW
+28    FW
+29    ephemeris BE-exterior
+30    ephemeris BE-mid-exterior
+31    ephemeris BE-mid-interior
+32    ephemeris BE-interior
+33    ephemeris FE-exterior
+34    ephemeris FE-mid-exterior
+35    ephemeris FE-mid-interior
+36    ephemeris FE-interior
+37    ephemeris BW-exterior
+38    ephemeris BW-mid-exterior
+39    ephemeris BW-mid-interior
+40    ephemeris BW-interior
+41    ephemeris FW-exterior
+42    ephemeris FW-mid-exterior
+43    ephemeris FW-mid-interior
+44    ephemeris FW-interior
+45    ephemeris BE
+46    ephemeris FE
+47    ephemeris BW
+48    ephemeris FW
+49    Optimal Bifacial gains
+50    Optimal Bifacial gains irr
+51    Ephemeris Bifacial gains
+52    Ephemeris Bifacial gains irr
+53    DHI/GHI
+54    Wspeed
+55    Temp
+56    clearness index
+
+"""
