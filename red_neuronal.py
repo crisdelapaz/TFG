@@ -25,20 +25,7 @@ def plot_red_neuronal (historial, titulo):
     
 def create_model (in_entrenamiento, in_pruebas, numero_red):
     
-    #Crea un modelo de red neuronal
-    #r = numero_red
     modelo = tf.keras.Sequential()
-    
-    # arquitectura= int(input("selecciona el tipo de arquitectura: 1)RNN 2)ANN : "))
-    
-    # if arquitectura == 1:
-    #     if len(in_entrenamiento.shape) ==2:
-    #         in_entrenamiento = np.expand_dims(in_entrenamiento, axis = 1)
-    #         in_pruebas = np.expand_dims(in_pruebas, axis = 1)    
-        
-    #     inputs = in_entrenamiento.shape[2]
-    #     entrada = tf.keras.layers.Input(shape=(None, inputs))
-        
 
     inputs = in_entrenamiento.shape[1]
     entrada = tf.keras.layers.Input(shape=(inputs,))
@@ -82,12 +69,7 @@ def create_model (in_entrenamiento, in_pruebas, numero_red):
                 print(f"capa añadida de {numero} neuronas con función {funcion} ")
             else:
                 print("se añadirá una capa igual a la anterior")
-            
-            # if arquitectura == 1:
-            #     return_seq = n<2    
-            #     modelo.add(tf.keras.layers.SimpleRNN(numero, activation = funcion, return_sequences = return_seq))
-            
-            
+                       
             modelo.add(tf.keras.layers.Dense(numero, activation = funcion))
             
             capas = n + 1
@@ -96,14 +78,6 @@ def create_model (in_entrenamiento, in_pruebas, numero_red):
         else:
             print("no se añadirá capa intermedia")
             break
-                
-        # if arquitectura == 1:
-        #     if capas == 0:
-        #         titulo = (f"{numero_red}- RNN con 0 Capas intermedias ")
-        #         break                
-        #     else:
-        #         titulo = (f"{numero_red}- RNN {capas} Capa de {numero} Neuronas con función {funcion.upper()} ")
-        
     
         if capas == 0:
             titulo = (f"{numero_red}- ANN con 0 Capas intermedias ")
@@ -194,6 +168,3 @@ def testing(inputs, outputs, modelo_entrenado, nombre, directorio, nombre_column
 '''
 FIN RESULTADOS RED
 '''
-
-
-
