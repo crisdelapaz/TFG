@@ -3,7 +3,7 @@ import os
 from tratamiento_datos import rd_excel, csv_to_excel
 from red_neuronal import training, testing
 
-#variables y llamadas a funciones REVISAR PARA CAMBIAR DE DIRECTORIO!!!!!!! 
+#variables y llamadas a funciones 
 directorio_origen = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_originales"
 directorio_destino = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_convertidos"
 directorio_datos_generados = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_generados"
