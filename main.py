@@ -1,13 +1,16 @@
 import os
 
-from tratamiento_datos import read_excel, csv_to_excel
+from tratamiento_datos import rd_excel, csv_to_excel
 from red_neuronal import training, testing
 
-#variables y llamadas a funciones 
+#variables y llamadas a funciones REVISAR PARA CAMBIAR DE DIRECTORIO!!!!!!! 
 directorio_origen = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_originales"
 directorio_destino = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_convertidos"
 directorio_datos_generados = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\datos_generados"
 substring = "training_data"
+
+directorio_red = "C:\\Users\\Cristina\\Downloads\\tfg\\datos\\red_entrenada"
+
 
 def red_creation(columnas, nombre_columna, lector, numero_red, get_poa, get_ghi_bo):
     
@@ -26,8 +29,20 @@ def red_creation(columnas, nombre_columna, lector, numero_red, get_poa, get_ghi_
     #fase 3
     #se prueba el funcionamiento de la red 
     testing(input_prueba, output_prueba, modelo_entrenado, nombre_opcion, directorio_datos_generados, nombre_columna, nombre_output)
+    
+    return modelo_entrenado
 
 def input_set_selection():
+    
+    ''' se selecciona con que entradas se va a trabajar.'''
+    
+    #crea el directorio deseado para almacenar los archivos correspondientes y no genera error si ya existía de antes el directorio
+    os.makedirs(directorio_destino, exist_ok = True)
+    os.makedirs(directorio_datos_generados, exist_ok = True)
+    os.makedirs(directorio_red, exist_ok = True)
+    #crea el excel a partir del csv
+    csv_to_excel(directorio_origen, directorio_destino, substring)
+    
     
     while True:
         
@@ -38,19 +53,18 @@ def input_set_selection():
         seleccion = int(input("Introduzca que entradas desea: "))
         
         if seleccion == 1:
-            
             '''PRIMERA RED'''
             
             print("ha elegido la primera red")
             
             columnas = [5, 6, 7, 45, 46, 47, 48, 53, 56]
-            numero = 1
     
             nombre_columna = ['Ángulo del modulo', 'GHI', 'efemerides BE',
                               'efemerides FE', 'efemerides BW', 
                               'efemerides FW', 'DHI/GHI',
                               'indice de claridad (DNI/B0)', 'POA_front', 'POA_back']
-            red_creation(columnas, nombre_columna, read_excel, numero, True, False)
+            
+            modelo_entrenado = red_creation(columnas, nombre_columna, rd_excel, seleccion, True, False)
     
             """ LEYENDA MATRIZ 1
             0 optimal angle
@@ -67,7 +81,6 @@ def input_set_selection():
             """
         
         elif seleccion == 2:
-            
             '''SEGUNDA RED'''
             
             print("ha elegido la segunda red")
@@ -76,8 +89,8 @@ def input_set_selection():
     
             nombre_columna = ['Ángulo del modulo', 'GHI', 'POA_front', 'POA_back',
                               'indice de claridad (GHI/B0)']
-            numero = 2
-            red_creation(columnas, nombre_columna, read_excel, numero, True, True )
+            
+            modelo_entrenado = red_creation(columnas, nombre_columna, rd_excel, seleccion, True, True )
     
             """ LEYENDA MATRIZ 2
             0 optimal angle
@@ -91,15 +104,25 @@ def input_set_selection():
         else:
             print ("Fin de bucle")
             break
+        #guarda el modelo entrenado siendo un archivo .keras
+        export (modelo_entrenado, directorio_red, seleccion)
+
+def export (modelo, directorio_red, seleccion):
+    
+    '''guarda el modelo entrenado en una ruta especificada y lo separa en función de las entradas escogidas'''
+    if not os.path.exists(directorio_red):
+        os.makedirs(directorio_red)
+    
+    if seleccion == 1:
+        arc_modelo = os.path.join(directorio_red, 'red_entrenada_1.keras')
+        
+    elif seleccion == 2:
+        arc_modelo = os.path.join(directorio_red, 'red_entrenada_2.keras')
+        
+    modelo.save(arc_modelo)
 '''
 FIN TRATAMIENTO DE DATOS
 '''
-
-
-#crea el directorio de destino para almacenar los excels y no genera error si ya existía de antes el directorio
-os.makedirs(directorio_destino, exist_ok = True)
-#crea el excel a partir del csv
-csv_to_excel(directorio_origen, directorio_destino, substring)
 
 input_set_selection()
 
@@ -164,10 +187,3 @@ input_set_selection()
 56    clearness index
 
 """
-
-
-                
-    
-    
-
-
