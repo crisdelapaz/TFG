@@ -70,23 +70,23 @@ def get_poa_back (excel_datos, columna_be, columna_bw):
 
 def get_clarity_index_GHI_B0 (excel_datos,columna_fecha, columna_GHI, latitud, longitud):
     
-    #modifica el indice de claridad a GHI/B0
+    # modifica el indice de claridad a GHI/B0
     
     fecha = pd.to_datetime(excel_datos.iloc [:, columna_fecha[0]])
     ghi = excel_datos.iloc [:, columna_GHI[0]].values
 
     localizacion = Location(latitude = latitud, longitude = longitud)
     pos_solar = localizacion.get_solarposition(fecha)
-    
     extra_r = pv.irradiance.get_extra_radiation(fecha.dt.day_of_year)
+
     cos_zenith = np.cos(np.radians(pos_solar['zenith']))
     b0 = extra_r * np.abs(cos_zenith)
     
     ghi_b0 = pd.Series(ghi/b0)
-    
+
     return ghi_b0
 
-def split_data (matriz, nombre_archivo):
+def split_data (matriz):
     
     '''
     separa los datos entre la parte de entrenamiento y 
@@ -120,11 +120,9 @@ def split_data (matriz, nombre_archivo):
             filas_pruebas.append(matriz[i])
         #las filas no escogidas para el entrenamiento se almacenan en filas_test
          
-    globals()[nombre_archivo + "-training"] = filas_entrenamiento
-    globals()[nombre_archivo + "-testing"] = filas_pruebas
-    #return filas_entrenamiento, filas_pruebas
+    return filas_entrenamiento, filas_pruebas
        
-def edit_data (nombre_archivo):
+def edit_data (m_entrenamiento, m_pruebas):
    
     '''
     transforma los datos a datos tipo 
@@ -136,20 +134,16 @@ def edit_data (nombre_archivo):
     input_pruebas = []
     output_pruebas = []
     
-    datos_entrenamiento = globals().get(nombre_archivo + "-training")
-    datos_pruebas = globals().get(nombre_archivo + "-testing")
-
-    #por cada matriz generada anteriormente de entrenamiento y prueba, 
     #se separa el input y el output 
     
-    for columna in datos_entrenamiento:
+    for columna in m_entrenamiento:
         if len(columna)>1:
             input_entrenamiento.append(columna[1:])
             output_entrenamiento.append(columna[0])
         else:
             print(f"esa columna no es mayor que 1: {columna}")
             
-    for columna in datos_pruebas:
+    for columna in m_pruebas:
         if len(columna)>1:
             input_pruebas.append(columna[1:])
             output_pruebas.append(columna[0])
@@ -163,7 +157,7 @@ def edit_data (nombre_archivo):
       
     return input_entrenamiento, output_entrenamiento, input_pruebas, output_pruebas
 
-def read_excel (directorio_destino, columnas, get_poa = False, get_ghi_b0 = False):
+def rd_excel (directorio_destino, columnas, get_poa = False, get_ghi_b0 = False):
     
     '''
     lee cada excel del directorio y crea una variable (array de arrays) 
@@ -200,13 +194,9 @@ def read_excel (directorio_destino, columnas, get_poa = False, get_ghi_b0 = Fals
             for i, fila in enumerate(matriz):
                 fila.append(GHI_B0.iloc[i])
                 
-        nombre_archivo = os.path.splitext(archivo)[0].split('-')[0]
-        globals()[nombre_archivo] = matriz
+        filas_entrenamiento, filas_pruebas = split_data (matriz)
         
-        #se separan las "matrices" previas en entrenamiento y testeo
-        split_data (matriz, nombre_archivo)
-        
-        input_entrenamiento, output_entrenamiento, input_pruebas, output_pruebas = edit_data(nombre_archivo)
+        input_entrenamiento, output_entrenamiento, input_pruebas, output_pruebas = edit_data(filas_entrenamiento, filas_pruebas)
         
         global_input_entrenamiento.append(input_entrenamiento)
         global_output_entrenamiento.append(output_entrenamiento)
