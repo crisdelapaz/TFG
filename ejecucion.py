@@ -31,27 +31,32 @@ def test():
     inputs = []
     
     print("\n\n Comprobación de la red neuronal")
-
+        
     print(" LEYENDA MATRIZ 1: angulo de inclinacion, GHI, ephemeris BE, ephemeris FE, ephemeris BW, ephemeris FW, DHI/GHI, clearness index (DNI/B0), poa_front, poa_back")
     print(" LEYENDA MATRIZ 2: angulo de inclinacion, GHI, clearness index (GHI/B0), poa_front, poa_back \n" )
-    
+
     tipo = int(input("Introduzca que opción desea: "))
     
+    if tipo not in [1,2] :
+        
+        print("No existe esa opción, procederás con el tipo 1")
+        tipo = 1
+        
     modelo = load (tipo)
-    
+
     print(f"modelo {tipo} cargado")
-    
+
     inputs_esperados = modelo.input_shape[1]
-    
+
     print(f"introduzca los valores de entrada (se esperan {inputs_esperados}). Introduzcalos separados por comas")
-    
+
     while True:
-        
+    
         inputs_usuario = input(f"Introduce {inputs_esperados} valores : ").strip().split(",")
-        
-        
+    
+    
         if len(inputs_usuario) != inputs_esperados:
-            
+        
             print(f"introduce {inputs_esperados} valores.")
             continue
         
@@ -61,8 +66,8 @@ def test():
                 valor = float (i)
                 inputs.append (valor)
             break
-        
-    prediction(modelo, inputs)
+    
+    prediction(modelo, inputs)        
 
 #llamada de la función principal
 test()
