@@ -15,9 +15,10 @@ def plot_red_neuronal (historial, titulo):
     #grafica los resultados de la red: añade leyenda, titulo, los dos tipos de pérdida
     
     plt.xlabel("iteración")
-    plt.ylabel("perdida con respecto a lo esperado")
+    plt.ylabel("pérdida")
     plt.plot(historial.history["loss"], label = "Pérdida de entrenamiento")
     plt.plot(historial.history["val_loss"], label = "Pérdida de testeo")
+    
     plt.title(titulo)
     plt.legend()
     plt.grid(True)
@@ -25,6 +26,7 @@ def plot_red_neuronal (historial, titulo):
     
 def create_model (in_entrenamiento, in_pruebas, numero_red):
     
+    '''crea el modelo de red neuronal de tipo ANN con sus respectivas capas intermedias'''
     modelo = tf.keras.Sequential()
 
     inputs = in_entrenamiento.shape[1]
@@ -84,7 +86,8 @@ def create_model (in_entrenamiento, in_pruebas, numero_red):
             break                
         else:
             titulo = (f"{numero_red}- ANN {capas} Capa de {numero} Neuronas con función {funcion.upper()} ")
-        
+            
+    print (titulo)    
     salida = tf.keras.layers.Dense(1, activation='linear' )
     modelo.add (salida)
     
@@ -108,7 +111,7 @@ def training (in_entrenamiento, out_entrenamiento, in_pruebas, out_pruebas, nume
     
     historial = modelo.fit(in_entrenamiento, out_entrenamiento,
                           validation_data=(in_pruebas, out_pruebas),
-                          epochs=21, 
+                          epochs=31, 
                           batch_size = 32, 
                           verbose= True)
 
