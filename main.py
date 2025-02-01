@@ -47,7 +47,7 @@ def input_set_selection():
     while True:
         
         print(" LEYENDA MATRIZ 1: optimal angle, tilt, GHI, ephemeris BE, ephemeris FE, ephemeris BW, ephemeris FW, DHI/GHI, clearness index (DNI/B0), poa_front, poa_back")
-        print(" LEYENDA MATRIZ 2: optimal angle, tilt, GHI, clearness index (GHI/B0), poa_front, poa_back \n" )
+        print(" LEYENDA MATRIZ 2: optimal angle, tilt, GHI, poa_front, poa_back, clearness index (GHI/B0) \n" )
         print(" Cualquier otro numero finalizará el bucle")
         
         seleccion = int(input("Introduzca que entradas desea: "))
@@ -187,3 +187,5 @@ input_set_selection()
 56    clearness index
 
 """
+
+
