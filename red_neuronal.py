@@ -171,3 +171,7 @@ def testing(inputs, outputs, modelo_entrenado, nombre, directorio, nombre_column
 '''
 FIN RESULTADOS RED
 '''
+
+
+
+
