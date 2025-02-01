@@ -33,7 +33,7 @@ def test():
     print("\n\n Comprobación de la red neuronal")
         
     print(" LEYENDA MATRIZ 1: angulo de inclinacion, GHI, ephemeris BE, ephemeris FE, ephemeris BW, ephemeris FW, DHI/GHI, clearness index (DNI/B0), poa_front, poa_back")
-    print(" LEYENDA MATRIZ 2: angulo de inclinacion, GHI, clearness index (GHI/B0), poa_front, poa_back \n" )
+    print(" LEYENDA MATRIZ 2: optimal angle, tilt, GHI, poa_front, poa_back, clearness index (GHI/B0) \n" )
 
     tipo = int(input("Introduzca que opción desea: "))
     
